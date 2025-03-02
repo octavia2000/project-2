@@ -1,5 +1,7 @@
 # Use the official .NET Core SDK image as a build environment
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build-env
+#added
+ENV APP_HOME /app 
 
 # Set working directory for the build env
 RUN mkdir ${APP_HOME}
@@ -24,7 +26,6 @@ RUN dotnet test --verbosity:normal
 # Publish a release
 # The "-c" flag is used in the "dotnet publish" command to specify the build configuration to use
 # The build configuration determines the build settings for the project, such as whether to include debugging symbols or optimize the output
-
 # The "-o" flag is used in the dotnet publish command to specify the output directory for the published application
 # By default, the output directory is ./bin/<BUILD-CONFIGURATION>/<FRAMEWORK>/publish/
 # In this case, -o out specifies that the output directory should be out
@@ -32,6 +33,7 @@ RUN dotnet test --verbosity:normal
 
 FROM build-env AS publish-env
 WORKDIR ${APP_HOME}/web.api
+RUN dotnet publish -c Release -o out
 
 # Build runtime image as final environment
 FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS final-env
@@ -50,6 +52,9 @@ ENV ASPNETCORE_URLS=http://+:5131
 ENV ASPNETCORE_ENVIRONMENT=docker
 
 # Copy the published application from the build environment to the final environment
+COPY --from=publish-env /app/web.api/out .  
+# Expose port 5131 for external access
+EXPOSE 5131
 
 # Define the command to start the application (dll === Dynamic Link Libraries)
 ENTRYPOINT ["dotnet", "web.api.dll"]
